@@ -1,19 +1,20 @@
 <?php
 
-namespace ScrapyardIO\Tubes\Fonts;
+namespace Surface\Fonts;
 
-use ScrapyardIO\Tubes\Contracts\Fonts\GFXFont;
+use Surface\Contracts\Fonts\GFXFont;
 
 /**
- * The built-in Adafruit 5x7 classic font (full ASCII 0-255), stored
- * column-major at 5 bytes per character.
+ * The Adafruit 5x7 classic face: codes 0..255, five column bytes per code
+ * (bit 0 is the top row), no glyph table. glyph() synthesises 5x8 boxes with
+ * a 6px advance.
  */
 class ClassicFont extends GFXFont
 {
-    protected int $first = 0;     // Supports full ASCII 0-255
+    protected int $first = 0;
     protected int $last = 255;
-    protected int $yAdvance = 8;  // Classic font is 8 pixels tall
-    protected bool $isColumnMajor = true;  // Classic font stores data in column-major format
+    protected int $y_advance = 8;
+    protected bool $column_major = true;
 
     protected array $bitmaps = [
         0x00, 0x00, 0x00, 0x00, 0x00, 0x3E, 0x5B, 0x4F, 0x5B, 0x3E, 0x3E, 0x6B,
@@ -131,18 +132,4 @@ class ClassicFont extends GFXFont
         0x3C, 0x00, 0x00, 0x00, 0x00, 0x00 // #255 NBSP
     ];
 
-    /**
-     * Get a byte from the classic font at specific character and column
-     * Classic font is 5 bytes per character (5x7 pixels)
-     */
-    public function getCharByte(int $char_code, int $column): int
-    {
-        if ($char_code < 0 || $char_code > 255 || $column < 0 || $column >= 5) {
-            return 0;
-        }
-
-        $offset = $char_code * 5 + $column;
-
-        return $this->bitmaps[$offset];
-    }
 }

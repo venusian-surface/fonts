@@ -1,175 +1,82 @@
 <?php
 
-namespace ScrapyardIO\Tubes\Fonts;
+namespace Surface\Fonts;
 
 use ReflectionClass;
-use ReflectionException;
-use ScrapyardIO\Tubes\Contracts\Fonts\FontException;
-use ScrapyardIO\Tubes\Contracts\Fonts\FontFactory;
-use ScrapyardIO\Tubes\Contracts\Fonts\GFXFont;
+use Surface\Contracts\Fonts\FontException;
+use Surface\Contracts\Fonts\FontRegistry;
+use Surface\Contracts\Fonts\GFXFont;
 
 /**
- * Font registry — companions {@see extend()} / {@see addFont()} like Window/Framebuffer.
- *
- * Built-in: `classic` → {@see ClassicFont}.
+ * The face registry: slug → class, one instance per slug. `classic` is always
+ * registered first so config may override it. Config is the merged `fonts`
+ * array; a companion package extends the registry at boot.
  */
-class FontManager implements FontFactory
+class FontManager implements FontRegistry
 {
-    /**
-     * @var array<string, class-string<GFXFont>>
-     */
-    protected array $fonts = [];
+    /** @var array<string, class-string<GFXFont>> */
+    protected array $faces = [];
 
-    /**
-     * @var array<string, GFXFont>
-     */
+    /** @var array<string, GFXFont> */
     protected array $instances = [];
 
-    protected string $defaultFont = 'classic';
+    protected string $default = 'classic';
 
-    /**
-     * @param  array<string, mixed>  $config
-     */
+    /** @param array{default?: string, faces?: array<string, array{class?: string, enabled?: bool}>} $config */
     public function __construct(array $config = [])
     {
-        $this->defaultFont = $this->resolveConfiguredDefault('font', $this->defaultFont);
-
         $this->extend('classic', ClassicFont::class);
 
-        if ($config !== []) {
-            $this->registerFromConfig($config);
+        $default = $config['default'] ?? null;
+        if (is_string($default) && $default !== '') {
+            $this->default = $this->normalize($default);
+        }
+
+        foreach ($config['faces'] ?? [] as $slug => $entry) {
+            if (! is_string($slug) || ! is_array($entry) || ! ($entry['enabled'] ?? false)) {
+                continue;
+            }
+            $this->extend($slug, (string) ($entry['class'] ?? ''));
         }
     }
 
-    /**
-     * @param  array<string, mixed>  $config
-     */
-    public function registerFromConfig(array $config): static
+    public function extend(string $slug, string $class): static
     {
-        if (isset($config['default']) && is_string($config['default']) && $config['default'] !== '') {
-            $this->defaultFont = strtolower($config['default']);
+        if (! is_subclass_of($class, GFXFont::class) || (new ReflectionClass($class))->isAbstract()) {
+            throw FontException::notAFont($class);
         }
-
-        foreach ($config as $name => $entry) {
-            if ($name === 'default' || ! is_string($name) || $name === '' || ! is_array($entry)) {
-                continue;
-            }
-
-            if (array_key_exists('enabled', $entry) && ! ($entry['enabled'] ?? false)) {
-                continue;
-            }
-
-            $class = $entry['class'] ?? null;
-
-            if (is_string($class) && $class !== '' && class_exists($class)) {
-                $this->extend($name, $class);
-            }
-        }
-
-        return $this;
-    }
-
-    /**
-     * @param  class-string<GFXFont>  $class
-     */
-    public function extend(string $name, string $class): static
-    {
-        $key = $this->normalize($name);
-
-        if (! $this->validateClass($class)) {
-            throw new FontException("Font [{$class}] must be a concrete subclass of ".GFXFont::class.'.');
-        }
-
-        $this->fonts[$key] = $class;
+        $key = $this->normalize($slug);
+        $this->faces[$key] = $class;
         unset($this->instances[$key]);
 
         return $this;
     }
 
-    /**
-     * @param  class-string<GFXFont>  $class
-     */
-    public function addFont(string $name, string $class): static
+    public function face(?string $slug = null): GFXFont
     {
-        return $this->extend($name, $class);
+        $key = $this->normalize($slug ?? $this->default);
+        $class = $this->faces[$key] ?? throw FontException::unknown($key);
+
+        return $this->instances[$key] ??= new $class();
     }
 
-    /**
-     * Alias of {@see font()} for MagicAlias symmetry with Window/Framebuffer.
-     */
-    public function driver(?string $name = null): GFXFont
+    public function has(string $slug): bool
     {
-        return $this->font($name);
+        return isset($this->faces[$this->normalize($slug)]);
     }
 
-    public function font(?string $name = null): GFXFont
+    public function slugs(): array
     {
-        $key = $this->normalize($name ?? $this->defaultFont);
-
-        if (! isset($this->fonts[$key])) {
-            throw new FontException("Font [{$key}] not registered.");
-        }
-
-        if (! isset($this->instances[$key])) {
-            $class = $this->fonts[$key];
-            $this->instances[$key] = new $class;
-        }
-
-        return $this->instances[$key];
+        return array_keys($this->faces);
     }
 
-    public function defaultFont(): string
+    public function defaultSlug(): string
     {
-        return $this->defaultFont;
+        return $this->default;
     }
 
-    /**
-     * Alias of {@see defaultFont()} for MagicAlias symmetry.
-     */
-    public function defaultDriver(): string
+    protected function normalize(string $slug): string
     {
-        return $this->defaultFont();
-    }
-
-    public function hasFont(string $name): bool
-    {
-        return isset($this->fonts[$this->normalize($name)]);
-    }
-
-    /**
-     * @return array<string, class-string<GFXFont>>
-     */
-    public function listFonts(): array
-    {
-        return $this->fonts;
-    }
-
-    protected function resolveConfiguredDefault(string $alias, string $fallback): string
-    {
-        if (function_exists('config')) {
-            $fromTubes = config("tubes.defaults.{$alias}");
-            if (is_string($fromTubes) && $fromTubes !== '') {
-                return strtolower($fromTubes);
-            }
-        }
-
-        return strtolower($fallback);
-    }
-
-    protected function normalize(string $name): string
-    {
-        return strtolower(trim($name));
-    }
-
-    protected function validateClass(string $class_name): bool
-    {
-        try {
-            $reflection = new ReflectionClass($class_name);
-        } catch (ReflectionException) {
-            return false;
-        }
-
-        return $reflection->isInstantiable()
-            && $reflection->isSubclassOf(GFXFont::class);
+        return strtolower(trim($slug));
     }
 }

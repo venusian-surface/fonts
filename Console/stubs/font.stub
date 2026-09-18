@@ -2,7 +2,7 @@
 
 namespace {{ namespace }};
 
-use ScrapyardIO\Tubes\Contracts\Fonts\GFXFont;
+use Surface\Contracts\Fonts\GFXFont;
 
 class {{ class }} extends GFXFont
 {
@@ -10,18 +10,11 @@ class {{ class }} extends GFXFont
 
     protected int $last = 0x7E;
 
-    protected int $yAdvance = 8;
+    protected int $y_advance = 8;
 
-    protected array $bitmaps = [
-        // Glyph bitmap data — empty scaffolds report hasBitmapData() === false
-    ];
+    /** Glyph bytes. An empty scaffold reports hasBitmapData() === false and draws nothing. */
+    protected array $bitmaps = [];
 
-    protected array $glyphs = [
-        // [bitmapOffset, width, height, xAdvance, xOffset, yOffset]
-    ];
-
-    public static function getClass(): static
-    {
-        return new self();
-    }
+    /** [bitmap_offset, width, height, x_advance, x_offset, y_offset], one per code from $first. */
+    protected array $glyphs = [];
 }

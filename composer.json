@@ -1,6 +1,6 @@
 {
-    "name": "tubes/fonts",
-    "description": "The Tubes Fonts component (GFXFont registry + ClassicFont).",
+    "name": "surface/fonts",
+    "description": "Surface bitmap faces: the GFXFont registry, the classic 5x7, make:font, and the Fonts alias.",
     "license": "MIT",
     "authors": [
         {
@@ -8,21 +8,21 @@
             "email": "angel@projectsaturnstudios.com"
         }
     ],
-    "homepage": "https://scrapyard-io.projectsaturnstudios.com/ecosystem/scrapyard-io/tubes/0.7.x/fonts",
-    "support": {
-        "issues": "https://github.com/scrapyard-io/tubes/issues",
-        "source": "https://github.com/scrapyard-io/tubes"
-    },
     "require": {
         "php": "^8.4|^8.5|^8.6",
-        "fabricate/console": "^0.7.0",
-        "fabricate/nuts-and-bolts": "^0.7.0",
-        "tubes/contracts": "^0.7.0"
+        "surface/contracts": "^0.8.0",
+        "venusian-voyager/console": "^0.8.0",
+        "venusian-voyager/filesystem": "^0.8.0",
+        "venusian-voyager/magic-aliases": "^0.8.0",
+        "venusian-voyager/nuts-and-bolts": "^0.8.0"
+    },
+    "suggest": {
+        "venusian/letterhead": "^0.8.0 - 57 faces: FreeSans, FreeSerif, FreeMono, Montserrat, U8g2, HelvB, Unscii, Logisoso, one-offs."
     },
     "minimum-stability": "dev",
     "autoload": {
         "psr-4": {
-            "ScrapyardIO\\Tubes\\Fonts\\": ""
+            "Surface\\Fonts\\": ""
         }
     },
     "config": {
@@ -30,9 +30,15 @@
     },
     "extra": {
         "branch-alias": {
-            "dev-master": "0.7.x-dev",
-            "dev-main": "0.7.x-dev",
-            "dev-0.7.x": "0.7.x-dev"
+            "dev-main": "0.8.x-dev"
+        },
+        "venusian": {
+            "providers": [
+                "Surface\\Fonts\\FontsServiceProvider"
+            ],
+            "aliases": {
+                "Fonts": "Surface\\Fonts\\MagicAliases\\Fonts"
+            }
         }
     }
 }

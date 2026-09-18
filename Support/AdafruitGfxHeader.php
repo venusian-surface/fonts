@@ -1,8 +1,8 @@
 <?php
 
-namespace ScrapyardIO\Tubes\Fonts\Support;
+namespace Surface\Fonts\Support;
 
-use ScrapyardIO\Tubes\Contracts\Fonts\FontException;
+use Surface\Contracts\Fonts\FontException;
 
 /**
  * Parse an Adafruit GFXfont C header (Fonts/*.h) into PHP arrays.
@@ -21,15 +21,15 @@ final class AdafruitGfxHeader
     public static function parse(string $source): array
     {
         if ($source === '') {
-            throw FontException::invalid('Adafruit GFX header source is empty.');
+            throw FontException::invalidHeader('Adafruit GFX header source is empty.');
         }
 
         if (! preg_match('/const\s+uint8_t\s+\w+Bitmaps\s*\[\s*\]\s*PROGMEM\s*=\s*\{(.*?)\};/s', $source, $bitmapMatch)) {
-            throw FontException::invalid('Could not locate Bitmaps[] in Adafruit GFX header.');
+            throw FontException::invalidHeader('Could not locate Bitmaps[] in Adafruit GFX header.');
         }
 
         if (! preg_match('/const\s+GFXglyph\s+\w+Glyphs\s*\[\s*\]\s*PROGMEM\s*=\s*\{(.*?)\};/s', $source, $glyphMatch)) {
-            throw FontException::invalid('Could not locate Glyphs[] in Adafruit GFX header.');
+            throw FontException::invalidHeader('Could not locate Glyphs[] in Adafruit GFX header.');
         }
 
         if (! preg_match(
@@ -37,7 +37,7 @@ final class AdafruitGfxHeader
             $source,
             $metaMatch,
         )) {
-            throw FontException::invalid('Could not locate GFXfont meta (first/last/yAdvance) in Adafruit GFX header.');
+            throw FontException::invalidHeader('Could not locate GFXfont meta (first/last/yAdvance) in Adafruit GFX header.');
         }
 
         $bitmaps = self::parseHexBytes($bitmapMatch[1]);
@@ -55,13 +55,13 @@ final class AdafruitGfxHeader
     public static function parseFile(string $path): array
     {
         if (! is_file($path)) {
-            throw FontException::invalid("Adafruit GFX header not found: {$path}");
+            throw FontException::invalidHeader("Adafruit GFX header not found: {$path}");
         }
 
         $contents = file_get_contents($path);
 
         if ($contents === false) {
-            throw FontException::invalid("Unable to read Adafruit GFX header: {$path}");
+            throw FontException::invalidHeader("Unable to read Adafruit GFX header: {$path}");
         }
 
         return self::parse($contents);
@@ -95,7 +95,7 @@ final class AdafruitGfxHeader
 
 namespace {$namespace};
 
-use ScrapyardIO\\Tubes\\Contracts\\Fonts\\GFXFont;
+use Surface\\Contracts\\Fonts\\GFXFont;
 
 class {$class} extends GFXFont
 {
@@ -103,7 +103,7 @@ class {$class} extends GFXFont
 
     protected int \$last = {$last};
 
-    protected int \$yAdvance = {$yAdvance};
+    protected int \$y_advance = {$yAdvance};
 
     protected array \$bitmaps = [
 {$bitmapLines}
@@ -112,11 +112,6 @@ class {$class} extends GFXFont
     protected array \$glyphs = [
 {$glyphLines}
     ];
-
-    public static function getClass(): static
-    {
-        return new self();
-    }
 }
 
 PHP;
@@ -145,7 +140,7 @@ PHP;
             $matches,
             PREG_SET_ORDER,
         )) {
-            throw FontException::invalid('Could not parse GFXglyph entries in Adafruit GFX header.');
+            throw FontException::invalidHeader('Could not parse GFXglyph entries in Adafruit GFX header.');
         }
 
         foreach ($matches as $match) {

@@ -1,23 +1,20 @@
 <?php
 
-namespace ScrapyardIO\Tubes\Fonts\Console;
+namespace Surface\Fonts\Console;
 
-use Fabricate\Console\GeneratorCommand;
-use ScrapyardIO\Tubes\Fonts\Support\AdafruitGfxHeader;
+use Surface\Fonts\Support\AdafruitGfxHeader;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputOption;
+use Voyager\Console\GeneratorCommand;
 
 #[AsCommand(name: 'make:font')]
 class FontMakeCommand extends GeneratorCommand
 {
-    protected string $name = 'make:font';
+    protected ?string $name = 'make:font';
 
-    protected string $description = 'Create a new GFX font class (empty scaffold or from an Adafruit GFXfont .h)';
+    protected string $description = 'Create a GFXFont face under app/Fonts: an empty scaffold, or one imported from an Adafruit GFXfont .h';
 
-    /**
-     * @var string
-     */
-    protected $type = 'Font';
+    protected ?string $type = 'Font';
 
     protected function getStub(): string
     {
@@ -26,22 +23,17 @@ class FontMakeCommand extends GeneratorCommand
 
     protected function resolveStubPath(string $stub): string
     {
-        return file_exists($customPath = $this->scrapyard_io->basePath(trim($stub, '/')))
+        return file_exists($customPath = $this->venusian->basePath(trim($stub, '/')))
             ? $customPath
             : __DIR__.$stub;
     }
 
-    /**
-     * @param  string  $rootNamespace
-     */
-    protected function getDefaultNamespace($rootNamespace): string
+    protected function getDefaultNamespace(string $rootNamespace): string
     {
         return $rootNamespace.'\Fonts';
     }
 
-    /**
-     * @return array<int, array{0: string, 1: string|null, 2: int, 3?: string}>
-     */
+    /** @return list<array{0: string, 1: string|null, 2: int, 3: string}> */
     protected function getOptions(): array
     {
         return [
@@ -54,11 +46,7 @@ class FontMakeCommand extends GeneratorCommand
     {
         $from = $this->option('from');
 
-        if (is_string($from) && $from !== '') {
-            return $this->handleFromHeader($from);
-        }
-
-        return parent::handle();
+        return is_string($from) && $from !== '' ? $this->handleFromHeader($from) : parent::handle();
     }
 
     protected function handleFromHeader(string $path): ?bool
@@ -79,12 +67,11 @@ class FontMakeCommand extends GeneratorCommand
         }
 
         $parsed = AdafruitGfxHeader::parseFile($path);
-        $class = class_basename($name);
         $namespace = $this->getNamespace($name);
-        $source = AdafruitGfxHeader::renderClassSource($namespace, $class, $parsed);
+        $class = str_replace($namespace.'\\', '', $name);
 
         $this->makeDirectory($target);
-        $this->files->put($target, $this->sortImports($source));
+        $this->files->put($target, $this->sortImports(AdafruitGfxHeader::renderClassSource($namespace, $class, $parsed)));
 
         if (windows_os()) {
             $target = str_replace('/', '\\', $target);
